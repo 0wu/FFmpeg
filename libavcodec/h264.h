@@ -1237,4 +1237,5 @@ void ff_h264_free_tables(H264Context *h);
 
 void ff_h264_set_erpic(ERPicture *dst, H264Picture *src);
 
+
 #endif /* AVCODEC_H264_H */

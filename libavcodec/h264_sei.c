@@ -222,6 +222,27 @@ static int decode_registered_user_data(H264Context *h, int size)
     return 0;
 }
 
+#define SEI_QUEUE_SIZE   4
+uint8_t sei_queue[SEI_QUEUE_SIZE][SEI_QUEUE_ELEMENT_SIZE];
+int sei_queue_data_size[SEI_QUEUE_SIZE];
+int sei_queue_head=0;
+static void sei_queue_append(uint8_t *data, int size)
+{
+    sei_queue_head = (sei_queue_head+1) % SEI_QUEUE_SIZE;
+    sei_queue_data_size[sei_queue_head]=fminl(size, SEI_QUEUE_ELEMENT_SIZE);
+    for(int i=0;i< sei_queue_data_size[sei_queue_head];i++)
+        sei_queue[sei_queue_head][i]=data[i];
+}
+
+
+int av_get_sei(uint8_t* data, int nth)
+{
+    int p=(sei_queue_head+ SEI_QUEUE_SIZE-nth) % SEI_QUEUE_SIZE;
+    int sz=sei_queue_data_size[p];
+    memcpy(data, sei_queue[p], sizeof(uint8_t)*sz);
+    return sz;
+}
+
 static int decode_unregistered_user_data(H264Context *h, int size)
 {
     uint8_t *user_data;
@@ -246,6 +267,8 @@ static int decode_unregistered_user_data(H264Context *h, int size)
 
     if (strlen(user_data + 16) > 0)
         av_log(h->avctx, AV_LOG_DEBUG, "user data:\"%s\"\n", user_data + 16);
+
+    sei_queue_append(user_data, size+16);
 
     av_free(user_data);
     return 0;
