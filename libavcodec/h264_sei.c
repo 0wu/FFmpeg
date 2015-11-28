@@ -222,22 +222,39 @@ static int decode_registered_user_data(H264Context *h, int size)
     return 0;
 }
 
-#define SEI_QUEUE_SIZE   4
+#define SEI_QUEUE_SIZE  8
 uint8_t sei_queue[SEI_QUEUE_SIZE][SEI_QUEUE_ELEMENT_SIZE];
 int sei_queue_data_size[SEI_QUEUE_SIZE];
 int sei_queue_head=0;
 static void sei_queue_append(uint8_t *data, int size)
 {
-    sei_queue_head = (sei_queue_head+1) % SEI_QUEUE_SIZE;
+    /*
+    printf("SEI ");
+    int i;
+    for(i=0;i<16;i++)
+        printf("%02x",data[i]);
+    printf(" ");
+    for(;i<size;i++)
+        printf("%02x",data[i]);
+    printf("\n");
+    */
     sei_queue_data_size[sei_queue_head]=fminl(size, SEI_QUEUE_ELEMENT_SIZE);
     for(int i=0;i< sei_queue_data_size[sei_queue_head];i++)
         sei_queue[sei_queue_head][i]=data[i];
+    sei_queue_head = (sei_queue_head+1) % SEI_QUEUE_SIZE;
 }
 
-
-int av_get_sei(uint8_t* data, int nth)
+void av_reset_sei()
 {
-    int p=(sei_queue_head+ SEI_QUEUE_SIZE-nth) % SEI_QUEUE_SIZE;
+    sei_queue_head=0;
+}
+
+int av_get_sei(uint8_t* data)
+{
+    if (sei_queue_head==0)
+        return -1;
+
+    int p=--sei_queue_head;
     int sz=sei_queue_data_size[p];
     memcpy(data, sei_queue[p], sizeof(uint8_t)*sz);
     return sz;
