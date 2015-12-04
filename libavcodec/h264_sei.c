@@ -29,6 +29,7 @@
 #include "golomb.h"
 #include "h264.h"
 #include "internal.h"
+#include "avcodec.h"
 
 static const uint8_t sei_num_clock_ts_table[9] = {
     1, 1, 1, 2, 2, 3, 3, 2, 3
@@ -222,11 +223,7 @@ static int decode_registered_user_data(H264Context *h, int size)
     return 0;
 }
 
-#define SEI_QUEUE_SIZE  8
-uint8_t sei_queue[SEI_QUEUE_SIZE][SEI_QUEUE_ELEMENT_SIZE];
-int sei_queue_data_size[SEI_QUEUE_SIZE];
-int sei_queue_head=0;
-static void sei_queue_append(uint8_t *data, int size)
+static void sei_queue_append(H264Context *h, uint8_t *data, int size)
 {
     /*
     printf("SEI ");
@@ -238,25 +235,27 @@ static void sei_queue_append(uint8_t *data, int size)
         printf("%02x",data[i]);
     printf("\n");
     */
-    sei_queue_data_size[sei_queue_head]=fminl(size, SEI_QUEUE_ELEMENT_SIZE);
-    for(int i=0;i< sei_queue_data_size[sei_queue_head];i++)
-        sei_queue[sei_queue_head][i]=data[i];
-    sei_queue_head = (sei_queue_head+1) % SEI_QUEUE_SIZE;
+    h->sei_queue_data_size[h->sei_queue_head]=fminl(size, SEI_QUEUE_ELEMENT_SIZE);
+    for(int i=0;i< h->sei_queue_data_size[h->sei_queue_head];i++)
+        h->sei_queue[h->sei_queue_head][i]=data[i];
+    h->sei_queue_head = (h->sei_queue_head+1) % SEI_QUEUE_SIZE;
 }
 
-void av_reset_sei()
+void av_reset_sei(AVCodecContext *avctx)
 {
-    sei_queue_head=0;
+    H264Context *h=avctx->priv_data;
+    h->sei_queue_head=0;
 }
 
-int av_get_sei(uint8_t* data)
+int av_get_sei(AVCodecContext* avctx, uint8_t* data)
 {
-    if (sei_queue_head==0)
+    H264Context *h= avctx->priv_data;
+    if (h->sei_queue_head==0)
         return -1;
 
-    int p=--sei_queue_head;
-    int sz=sei_queue_data_size[p];
-    memcpy(data, sei_queue[p], sizeof(uint8_t)*sz);
+    int p=--(h->sei_queue_head);
+    int sz=h->sei_queue_data_size[p];
+    memcpy(data, h->sei_queue[p], sizeof(uint8_t)*sz);
     return sz;
 }
 
@@ -274,6 +273,8 @@ static int decode_unregistered_user_data(H264Context *h, int size)
 
     for (i = 0; i < size + 16; i++)
         user_data[i] = get_bits(&h->gb, 8);
+    
+    sei_queue_append(h, user_data, size+16);
 
     user_data[i] = 0;
     e = sscanf(user_data + 16, "x264 - core %d", &build);
@@ -285,7 +286,6 @@ static int decode_unregistered_user_data(H264Context *h, int size)
     if (strlen(user_data + 16) > 0)
         av_log(h->avctx, AV_LOG_DEBUG, "user data:\"%s\"\n", user_data + 16);
 
-    sei_queue_append(user_data, size+16);
 
     av_free(user_data);
     return 0;

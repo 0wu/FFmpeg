@@ -5290,8 +5290,9 @@ const AVCodecDescriptor *avcodec_descriptor_get_by_name(const char *name);
 /**
  * @}
  */
+#define SEI_QUEUE_SIZE  8
 #define SEI_QUEUE_ELEMENT_SIZE 256
-int av_get_sei(uint8_t* data);
-void av_reset_sei();
+int av_get_sei(AVCodecContext* h, uint8_t* data);
+void av_reset_sei(AVCodecContext* h);
 
 #endif /* AVCODEC_AVCODEC_H */

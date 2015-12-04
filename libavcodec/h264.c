@@ -1774,6 +1774,8 @@ static int h264_decode_frame(AVCodecContext *avctx, void *data,
     int i, out_idx;
     int ret;
 
+    av_reset_sei(avctx);
+
     h->flags = avctx->flags;
     h->setup_finished = 0;
 

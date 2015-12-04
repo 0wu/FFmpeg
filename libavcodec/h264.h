@@ -844,6 +844,11 @@ typedef struct H264Context {
     /*Green Metadata */
     GreenMetaData sei_green_metadata;
 
+    /* SEI */
+    uint8_t sei_queue[SEI_QUEUE_SIZE][SEI_QUEUE_ELEMENT_SIZE];
+    int sei_queue_data_size[SEI_QUEUE_SIZE];
+    int sei_queue_head;
+
 } H264Context;
 
 extern const uint8_t ff_h264_chroma_qp[7][QP_MAX_NUM + 1]; ///< One chroma qp table for each possible bit depth (8-14).
